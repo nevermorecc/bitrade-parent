@@ -11,33 +11,34 @@ import java.util.List;
 public class CoinProcessorFactory {
     private HashMap<String, CoinProcessor> processorMap;
     private List<String> exchangeZones = new ArrayList<>();
+
     public CoinProcessorFactory() {
         processorMap = new HashMap<>();
     }
 
     public void addProcessor(String symbol, CoinProcessor processor) {
-        log.info("CoinProcessorFactory addProcessor = {}",symbol);
+        log.info("CoinProcessorFactory addProcessor = {}", symbol);
         processorMap.put(symbol, processor);
-        if(!exchangeZones.contains(processor.getBaseCoin())){
+        if (!exchangeZones.contains(processor.getBaseCoin())) {
             exchangeZones.add(processor.getBaseCoin());
         }
     }
 
-    public CoinProcessor getProcessorByCoin(String coin){
-        for(String base:exchangeZones){
-            String symbol = coin + "/" +base;
-            if(processorMap.containsKey(symbol)){
+    public CoinProcessor getProcessorByCoin(String coin) {
+        for (String base : exchangeZones) {
+            String symbol = coin + "/" + base;
+            if (processorMap.containsKey(symbol)) {
                 return processorMap.get(symbol);
             }
         }
         return null;
     }
 
-    public List<CoinProcessor> getProcessorListByCoin(String coin){
+    public List<CoinProcessor> getProcessorListByCoin(String coin) {
         List<CoinProcessor> list = new ArrayList<>();
-        for(String base:exchangeZones){
-            String symbol = coin + "/" +base;
-            if(processorMap.containsKey(symbol)){
+        for (String base : exchangeZones) {
+            String symbol = coin + "/" + base;
+            if (processorMap.containsKey(symbol)) {
                 list.add(processorMap.get(symbol));
             }
         }

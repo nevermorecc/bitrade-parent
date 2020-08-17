@@ -35,7 +35,7 @@ public class KLineGeneratorJob {
         int minute = calendar.get(Calendar.MINUTE);
         int hour = calendar.get(Calendar.HOUR_OF_DAY);
         RLock fairLock = RedissonUtil.getFairLock(RedissonKeyConstant.GENERATE_MIN_KLINE + time);
-        if (!fairLock.tryLock(0, 30, TimeUnit.SECONDS)){
+        if (!fairLock.tryLock(0, 30, TimeUnit.SECONDS)) {
             if (hour == 0 && minute == 0) {
                 processorFactory.getProcessorMap().forEach((symbol, processor) -> {
                     //更新24H成交量
