@@ -62,7 +62,7 @@ public class OrderController {
      *
      * @return
      */
-    @RequestMapping(value = "add",method = RequestMethod.POST)
+    @RequestMapping(value = "add", method = RequestMethod.POST)
     @ApiOperation(value = "添加委托订单")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "direction", value = "BUY 0/SELL 1(交易方向)", required = true, dataType = "String"),
@@ -80,35 +80,35 @@ public class OrderController {
             ExchangeOrderType type,
             BigDecimal triggerPrice) {
         log.info("用户下单authMember={},direction={},symbol={},price={},amount={},type={},triggerPrice={}"
-                ,authMember,direction,symbol,price,amount,type,triggerPrice);
+                , authMember, direction, symbol, price, amount, type, triggerPrice);
         ExchangeOrder order = null;
-        if(direction == null || type == null){
+        if (direction == null || type == null) {
             //TODO 提示信息不正确
-            return MessageResult.error(500,msService.getMessage("ILLEGAL_ARGUMENT"));
+            return MessageResult.error(500, msService.getMessage("ILLEGAL_ARGUMENT"));
         }
-        Member member=memberService.findOne(authMember.getId());
+        Member member = memberService.findOne(authMember.getId());
         /*if(member.getMemberLevel()== MemberLevelEnum.GENERAL){
             return MessageResult.error(500,msService.getMessage("NO_REAL_NAME"));
         }*/
         //是否被禁止交易
-        if(member.getTransactionStatus().equals(BooleanEnum.IS_FALSE)){
-            return MessageResult.error(500,msService.getMessage("CANNOT_TRADE"));
+        if (member.getTransactionStatus().equals(BooleanEnum.IS_FALSE)) {
+            return MessageResult.error(500, msService.getMessage("CANNOT_TRADE"));
         }
         order = new ExchangeOrder();
-        if (price.compareTo(BigDecimal.ZERO) <= 0 && type != ExchangeOrderType.MARKET_PRICE ) {
+        if (price.compareTo(BigDecimal.ZERO) <= 0 && type != ExchangeOrderType.MARKET_PRICE) {
             return MessageResult.error(500, msService.getMessage("EXORBITANT_PRICES"));
         }
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             return MessageResult.error(500, msService.getMessage("NUMBER_OF_ILLEGAL"));
         }
-        if( direction == ExchangeOrderDirection.BUY && type == ExchangeOrderType.CHECK_FULL_STOP){
-            if(triggerPrice.compareTo(price)>=0){
-                return MessageResult.error(500,msService.getMessage("BUY_CHECK_FULL_ILLEGAL"));
+        if (direction == ExchangeOrderDirection.BUY && type == ExchangeOrderType.CHECK_FULL_STOP) {
+            if (triggerPrice.compareTo(price) >= 0) {
+                return MessageResult.error(500, msService.getMessage("BUY_CHECK_FULL_ILLEGAL"));
             }
         }
-        if(direction == ExchangeOrderDirection.SELL && type==ExchangeOrderType.CHECK_FULL_STOP){
-            if(triggerPrice.compareTo(price)<=0){
-                return MessageResult.error(500,msService.getMessage("SELL_CHECK_FULL_ILLEGAL"));
+        if (direction == ExchangeOrderDirection.SELL && type == ExchangeOrderType.CHECK_FULL_STOP) {
+            if (triggerPrice.compareTo(price) <= 0) {
+                return MessageResult.error(500, msService.getMessage("SELL_CHECK_FULL_ILLEGAL"));
             }
         }
         ExchangeCoin exchangeCoin = exchangeCoinService.findBySymbol(symbol);
@@ -139,16 +139,16 @@ public class OrderController {
         } else {
             amount = amount.setScale(exchangeCoin.getCoinScale(), BigDecimal.ROUND_DOWN);
             //成交量范围控制
-            if(exchangeCoin.getMaxVolume()!=null&&exchangeCoin.getMaxVolume().compareTo(BigDecimal.ZERO)!=0
-                    &&exchangeCoin.getMaxVolume().compareTo(amount)<0){
-                return MessageResult.error(msService.getMessage("AMOUNT_OVER_SIZE")+" "+exchangeCoin.getMaxVolume());
+            if (exchangeCoin.getMaxVolume() != null && exchangeCoin.getMaxVolume().compareTo(BigDecimal.ZERO) != 0
+                    && exchangeCoin.getMaxVolume().compareTo(amount) < 0) {
+                return MessageResult.error(msService.getMessage("AMOUNT_OVER_SIZE") + " " + exchangeCoin.getMaxVolume());
             }
-            if(exchangeCoin.getMinVolume()!=null&&exchangeCoin.getMinVolume().compareTo(BigDecimal.ZERO)!=0
-                    &&exchangeCoin.getMinVolume().compareTo(amount)>0){
-                return MessageResult.error(msService.getMessage("AMOUNT_TOO_SMALL")+" "+exchangeCoin.getMinVolume());
+            if (exchangeCoin.getMinVolume() != null && exchangeCoin.getMinVolume().compareTo(BigDecimal.ZERO) != 0
+                    && exchangeCoin.getMinVolume().compareTo(amount) > 0) {
+                return MessageResult.error(msService.getMessage("AMOUNT_TOO_SMALL") + " " + exchangeCoin.getMinVolume());
             }
         }
-        if (amount.compareTo(BigDecimal.ZERO)<=0) {
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             return MessageResult.error(msService.getMessage("AMOUNT_TOO_SMALL"));
         }
         MemberWallet baseCoinWallet = walletService.findByCoinUnitAndMemberId(baseCoin, member.getId());
@@ -182,10 +182,9 @@ public class OrderController {
         order.setCoinSymbol(exCoin);
         order.setType(type);
         order.setDirection(direction);
-        if(order.getType() == ExchangeOrderType.MARKET_PRICE){
+        if (order.getType() == ExchangeOrderType.MARKET_PRICE) {
             order.setPrice(BigDecimal.ZERO);
-        }
-        else{
+        } else {
             order.setPrice(price);
             order.setTriggerPrice(triggerPrice);
         }
@@ -198,10 +197,10 @@ public class OrderController {
         if (mr.getCode() != 0) {
             return MessageResult.error(500, msService.getMessage("ADD_ORDER_FAIL") + exchangeCoin.getMaxTradingOrder());
         }
-        if(type==ExchangeOrderType.CHECK_FULL_STOP){
+        if (type == ExchangeOrderType.CHECK_FULL_STOP) {
             //止盈止损单发送到其他地方
-            kafkaTemplate.send("exchange-waiting-order",symbol,JSON.toJSONString(order));
-        }else {
+            kafkaTemplate.send("exchange-waiting-order", symbol, JSON.toJSONString(order));
+        } else {
             //非止盈止损单直接发送到 发送消息至Exchange系统
             kafkaTemplate.send("exchange-order", symbol, JSON.toJSONString(order));
         }
@@ -214,20 +213,20 @@ public class OrderController {
     /**
      * 历史委托
      */
-    @RequestMapping(value = "history",method = RequestMethod.POST)
+    @RequestMapping(value = "history", method = RequestMethod.POST)
     @ApiOperation(value = "查询历史委托")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "symbol", value = "交易对", required = true, dataType = "String"),
-            @ApiImplicitParam(name = "pageNo", value = "页码", required = true, dataType = "Integer",defaultValue = "1"),
-            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = true, dataType = "Integer",defaultValue = "10")
+            @ApiImplicitParam(name = "pageNo", value = "页码", required = true, dataType = "Integer", defaultValue = "1"),
+            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = true, dataType = "Integer", defaultValue = "10")
     })
     @MultiDataSource(name = "second")
     public Page<ExchangeOrder> history(@ApiIgnore @SessionAttribute(SESSION_MEMBER) AuthMember member, String symbol, int pageNo, int pageSize) {
-        Page<ExchangeOrder> page = orderService.findHistory(member.getId(), symbol, pageNo, pageSize,BooleanEnum.IS_FALSE);
+        Page<ExchangeOrder> page = orderService.findHistory(member.getId(), symbol, pageNo, pageSize, BooleanEnum.IS_FALSE);
         ExchangeCoin coin = exchangeCoinService.findBySymbol(symbol);
         page.getContent().forEach(exchangeOrder -> {
             exchangeOrder.setPriceStr(exchangeOrder.getPrice().setScale(coin.getBaseCoinScale(), RoundingMode.DOWN).toPlainString());
-            exchangeOrder.setAmountStr(exchangeOrder.getAmount().setScale(coin.getCoinScale(),RoundingMode.DOWN).toPlainString());
+            exchangeOrder.setAmountStr(exchangeOrder.getAmount().setScale(coin.getCoinScale(), RoundingMode.DOWN).toPlainString());
             //获取交易成交详情
             exchangeOrder.setDetail(exchangeOrderDetailService.findAllByOrderId(exchangeOrder.getOrderId()));
         });
@@ -237,20 +236,20 @@ public class OrderController {
     /**
      * 历史委托
      */
-    @RequestMapping(value = "historyOrder",method = RequestMethod.POST)
+    @RequestMapping(value = "historyOrder", method = RequestMethod.POST)
     @ApiOperation(value = "查询历史成交")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "symbol", value = "交易对", required = true, dataType = "String"),
-            @ApiImplicitParam(name = "pageNo", value = "页码", required = true, dataType = "Integer",defaultValue = "1"),
-            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = true, dataType = "Integer",defaultValue = "10")
+            @ApiImplicitParam(name = "pageNo", value = "页码", required = true, dataType = "Integer", defaultValue = "1"),
+            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = true, dataType = "Integer", defaultValue = "10")
     })
     @MultiDataSource(name = "second")
     public Page<ExchangeOrder> historyOrder(@ApiIgnore @SessionAttribute(SESSION_MEMBER) AuthMember member, String symbol, int pageNo, int pageSize) {
-        Page<ExchangeOrder> page = orderService.findHistory(member.getId(), symbol, pageNo, pageSize,BooleanEnum.IS_FALSE);
+        Page<ExchangeOrder> page = orderService.findHistory(member.getId(), symbol, pageNo, pageSize, BooleanEnum.IS_FALSE);
         ExchangeCoin coin = exchangeCoinService.findBySymbol(symbol);
         page.getContent().forEach(exchangeOrder -> {
             exchangeOrder.setPriceStr(exchangeOrder.getPrice().setScale(coin.getBaseCoinScale(), RoundingMode.DOWN).toPlainString());
-            exchangeOrder.setAmountStr(exchangeOrder.getAmount().setScale(coin.getCoinScale(),RoundingMode.DOWN).toPlainString());
+            exchangeOrder.setAmountStr(exchangeOrder.getAmount().setScale(coin.getCoinScale(), RoundingMode.DOWN).toPlainString());
             //获取交易成交详情
             exchangeOrder.setDetail(exchangeOrderDetailService.findAllByOrderId(exchangeOrder.getOrderId()));
         });
@@ -266,20 +265,20 @@ public class OrderController {
      * @param pageSize
      * @return
      */
-    @RequestMapping(value = "current",method = RequestMethod.POST)
+    @RequestMapping(value = "current", method = RequestMethod.POST)
     @ApiOperation(value = "查询当前委托")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "symbol", value = "交易对", required = true, dataType = "String"),
-            @ApiImplicitParam(name = "pageNo", value = "页码", required = true, dataType = "Integer",defaultValue = "1"),
-            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = true, dataType = "Integer",defaultValue = "10")
+            @ApiImplicitParam(name = "pageNo", value = "页码", required = true, dataType = "Integer", defaultValue = "1"),
+            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = true, dataType = "Integer", defaultValue = "10")
     })
     @MultiDataSource(name = "second")
     public Page<ExchangeOrder> currentOrder(@ApiIgnore @SessionAttribute(SESSION_MEMBER) AuthMember member, String symbol, int pageNo, int pageSize) {
-        Page<ExchangeOrder> page = orderService.findCurrent(member.getId(), symbol, pageNo, pageSize,BooleanEnum.IS_FALSE);
+        Page<ExchangeOrder> page = orderService.findCurrent(member.getId(), symbol, pageNo, pageSize, BooleanEnum.IS_FALSE);
         ExchangeCoin coin = exchangeCoinService.findBySymbol(symbol);
         page.getContent().forEach(exchangeOrder -> {
             exchangeOrder.setPriceStr(exchangeOrder.getPrice().setScale(coin.getBaseCoinScale(), RoundingMode.DOWN).toPlainString());
-            exchangeOrder.setAmountStr(exchangeOrder.getAmount().setScale(coin.getCoinScale(),RoundingMode.DOWN).toPlainString());
+            exchangeOrder.setAmountStr(exchangeOrder.getAmount().setScale(coin.getCoinScale(), RoundingMode.DOWN).toPlainString());
             //获取交易成交详情
             BigDecimal tradedAmount = BigDecimal.ZERO;
             //获取成交总价
@@ -304,7 +303,7 @@ public class OrderController {
      * @param orderId
      * @return
      */
-    @RequestMapping(value = "detail/{orderId}",method = {RequestMethod.POST,RequestMethod.GET})
+    @RequestMapping(value = "detail/{orderId}", method = {RequestMethod.POST, RequestMethod.GET})
     @ApiOperation(value = "查询委托成交明细")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "orderId", value = "订单id", required = true, dataType = "String")
@@ -312,6 +311,7 @@ public class OrderController {
     public List<ExchangeOrderDetail> currentOrder(@ApiIgnore @SessionAttribute(SESSION_MEMBER) AuthMember member, @PathVariable String orderId) {
         return exchangeOrderDetailService.findAllByOrderId(orderId);
     }
+
     @ApiOperation(value = "撤销委托的交易")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "orderId", value = "订单id", required = true, dataType = "String")
@@ -326,27 +326,25 @@ public class OrderController {
             return MessageResult.error(500, msService.getMessage("NOT_TRADING_ORDER"));
         }
         if (maxCancelTimes > 0 && orderService.findTodayOrderCancelTimes(member.getId(), order.getSymbol()) >= maxCancelTimes) {
-            return MessageResult.error(500, msService.getMessage("MAX_CANCEL_TIMES_OVER")+ maxCancelTimes);
+            return MessageResult.error(500, msService.getMessage("MAX_CANCEL_TIMES_OVER") + maxCancelTimes);
         }
-        if(order.getType()==ExchangeOrderType.CHECK_FULL_STOP){
+        if (order.getType() == ExchangeOrderType.CHECK_FULL_STOP) {
             //止盈止损取消
-            if(order.getStatus() == ExchangeOrderStatus.WAITING_TRIGGER && CheckTraderOrderUtil.isWaitingOrderExist(order,restTemplate)){
-                kafkaTemplate.send("exchange-waiting-order-cancel",order.getSymbol(), JSON.toJSONString(order));
-            } else if(System.currentTimeMillis() - order.getTime() > 3600 * 1000) {
+            if (order.getStatus() == ExchangeOrderStatus.WAITING_TRIGGER && CheckTraderOrderUtil.isWaitingOrderExist(order, restTemplate)) {
+                kafkaTemplate.send("exchange-waiting-order-cancel", order.getSymbol(), JSON.toJSONString(order));
+            } else if (System.currentTimeMillis() - order.getTime() > 3600 * 1000) {
                 orderService.forceCancelOrder(order);
-            }
-            else {
+            } else {
                 return MessageResult.error(msService.getMessage("INFORMATION_EXPIRED"));
             }
-        }else {
+        } else {
             if (order.getStatus() == ExchangeOrderStatus.TRADING && CheckTraderOrderUtil.isExchangeOrderExist(order, restTemplate)) {
                 // 发送消息至Exchange系统
                 kafkaTemplate.send("exchange-order-cancel", order.getSymbol(), JSON.toJSONString(order));
-            } else if(System.currentTimeMillis() - order.getTime() > 3600 * 1000) {
+            } else if (System.currentTimeMillis() - order.getTime() > 3600 * 1000) {
                 // 强制取消
                 orderService.forceCancelOrder(order);
-            }
-            else {
+            } else {
                 return MessageResult.error(msService.getMessage("INFORMATION_EXPIRED"));
             }
         }
@@ -365,14 +363,14 @@ public class OrderController {
             @ApiImplicitParam(name = "startTime", value = "开始时间", required = false, dataType = "String"),
             @ApiImplicitParam(name = "endTime", value = "结束时间", required = false, dataType = "String"),
             @ApiImplicitParam(name = "direction", value = "BUY/SELL(交易方向)", required = false, dataType = "String"),
-            @ApiImplicitParam(name = "pageNo", value = "页码", required = false, dataType = "Integer",defaultValue = "1"),
-            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = false, dataType = "Integer",defaultValue = "10")
+            @ApiImplicitParam(name = "pageNo", value = "页码", required = false, dataType = "Integer", defaultValue = "1"),
+            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = false, dataType = "Integer", defaultValue = "10")
     })
     public Page<ExchangeOrder> personalHistoryOrder(@ApiIgnore @SessionAttribute(SESSION_MEMBER) AuthMember member,
-                                                    String symbol,ExchangeOrderType type,ExchangeOrderStatus status,String startTime,
-                                                    String endTime,ExchangeOrderDirection direction,int pageNo,int pageSize) {
+                                                    String symbol, ExchangeOrderType type, ExchangeOrderStatus status, String startTime,
+                                                    String endTime, ExchangeOrderDirection direction, int pageNo, int pageSize) {
 
-        Page<ExchangeOrder> page = orderService.findPersonalHistory(member.getId(), symbol, type, status, startTime, endTime,direction, pageNo, pageSize);
+        Page<ExchangeOrder> page = orderService.findPersonalHistory(member.getId(), symbol, type, status, startTime, endTime, direction, pageNo, pageSize);
         page.getContent().forEach(exchangeOrder -> {
             //获取交易成交详情
             exchangeOrder.setDetail(exchangeOrderDetailService.findAllByOrderId(exchangeOrder.getOrderId()));
@@ -383,6 +381,7 @@ public class OrderController {
 
     /**
      * 个人中心当前委托
+     *
      * @param member
      * @param symbol
      * @param type
@@ -401,13 +400,13 @@ public class OrderController {
             @ApiImplicitParam(name = "startTime", value = "开始时间", required = false, dataType = "String"),
             @ApiImplicitParam(name = "endTime", value = "结束时间", required = false, dataType = "String"),
             @ApiImplicitParam(name = "direction", value = "BUY/SELL(交易方向)", required = false, dataType = "String"),
-            @ApiImplicitParam(name = "pageNo", value = "页码", required = false, dataType = "Integer",defaultValue = "1"),
-            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = false, dataType = "Integer",defaultValue = "10")
+            @ApiImplicitParam(name = "pageNo", value = "页码", required = false, dataType = "Integer", defaultValue = "1"),
+            @ApiImplicitParam(name = "pageSize", value = "每页数量", required = false, dataType = "Integer", defaultValue = "10")
     })
     public Page<ExchangeOrder> personalCurrentOrder(@ApiIgnore @SessionAttribute(SESSION_MEMBER) AuthMember member,
-                                                    String symbol,ExchangeOrderType type,ExchangeOrderStatus status,String startTime,
-                                                    String endTime,ExchangeOrderDirection direction,int pageNo,int pageSize){
-        Page<ExchangeOrder> page = orderService.findPersonalCurrent(member.getId(), symbol,type,startTime,endTime, direction, pageNo, pageSize);
+                                                    String symbol, ExchangeOrderType type, ExchangeOrderStatus status, String startTime,
+                                                    String endTime, ExchangeOrderDirection direction, int pageNo, int pageSize) {
+        Page<ExchangeOrder> page = orderService.findPersonalCurrent(member.getId(), symbol, type, startTime, endTime, direction, pageNo, pageSize);
         page.getContent().forEach(exchangeOrder -> {
             //获取交易成交详情
             BigDecimal tradedAmount = BigDecimal.ZERO;
